@@ -384,3 +384,29 @@ def unmark(text):
     __md = Markdown(output_format="plain")
     __md.stripTopLevelTags = False
     return __md.convert(text)
+
+#!/usr/bin/env python3  
+# -*- coding: utf-8 -*-  
+# audiblez - A program to convert e-books into audiobooks using  
+# Kokoro-82M model for high-quality text-to-speech synthesis.  
+# by Claudio Santini 2025 - https://claudio.uk  
+
+# ... [existing code remains unchanged] ...
+
+# ✅ New function to support --list-chapters in cli.py
+
+def list_chapters(epub_path):
+    """
+    Lists all chapters in the given EPUB without converting them to audio.
+    """
+    book = epub.read_epub(epub_path)
+    document_chapters = find_document_chapters_and_extract_texts(book)
+    if not document_chapters:
+        print("❌ No chapters found.")
+        return
+
+    print(f"\n📚 Found {len(document_chapters)} chapters:\n")
+    for i, ch in enumerate(document_chapters, 1):
+        name = ch.get_name()
+        preview = chapter_beginning_one_liner(ch, chars=60)
+        print(f"{i:>3}: {name} - {preview} ({len(ch.extracted_text)} characters)")
