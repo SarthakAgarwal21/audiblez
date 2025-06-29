@@ -19,24 +19,14 @@ def cli_main():
         epilog=epilog,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument('epub_file_path', help='Path to the epub file')
-    parser.add_argument('-v', '--voice', default=default_voice,
-                        help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False,
-                        help='Interactively select which chapters to read in the audiobook',
-                        action='store_true')
-    parser.add_argument('-s', '--speed', default=1.0,
-                        help='Set speed from 0.5 to 2.0', type=float)
-    parser.add_argument('-c', '--cuda', default=False,
-                        help='Use GPU via Cuda in Torch if available',
-                        action='store_true')
-    parser.add_argument('-o', '--output', default='.',
-                        help='Output folder for the audiobook and temporary files',
-                        metavar='FOLDER')
 
-    # ✅ New argument
-    parser.add_argument('--list-chapters', action='store_true',
-                        help='List chapter names and exit (no conversion)')
+    parser.add_argument('epub_file_path', help='Path to the epub file')
+    parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
+    parser.add_argument('-p', '--pick', default=False, help='Interactively select which chapters to read in the audiobook', action='store_true')
+    parser.add_argument('-s', '--speed', default=1.0, help='Set speed from 0.5 to 2.0', type=float)
+    parser.add_argument('-c', '--cuda', default=False, help='Use GPU via Cuda in Torch if available', action='store_true')
+    parser.add_argument('-o', '--output', default='.', help='Output folder for the audiobook and temporary files', metavar='FOLDER')
+    parser.add_argument('--list-chapters', action='store_true', help='List chapter names in the EPUB without converting to audio')
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -52,14 +42,36 @@ def cli_main():
         else:
             print('CUDA GPU not available. Defaulting to CPU')
 
-    # ✅ New behavior: list chapters and exit
-    if args.list_chapters:
-        from core import list_chapters
-        list_chapters(args.epub_file_path)
-        sys.exit(0)
+    from audiblez.core import main
 
-    from core import main
-    main(args.epub_file_path, args.voice, args.pick, args.speed, args.output)
+    if args.list_chapters:
+        def list_chapter_event(event_type, **kwargs):
+            if event_type == 'CORE_STARTED':
+                print("Running audiblez to detect chapters (no conversion will happen)...")
+            elif event_type == 'CORE_SELECTED_CHAPTERS':
+                print("📚 Chapters Detected:")
+                for i, chapter in enumerate(kwargs.get('chapters', []), start=1):
+                    print(f"  {i}. {chapter.get_name()}")
+                sys.exit(0)
+
+        main(
+            file_path=args.epub_file_path,
+            voice=args.voice,
+            pick_manually=args.pick,
+            speed=args.speed,
+            output_folder=args.output,
+            post_event=list_chapter_event
+        )
+        return
+
+    # Normal execution
+    main(
+        file_path=args.epub_file_path,
+        voice=args.voice,
+        pick_manually=args.pick,
+        speed=args.speed,
+        output_folder=args.output
+    )
 
 
 if __name__ == '__main__':
